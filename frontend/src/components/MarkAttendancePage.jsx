@@ -6,6 +6,7 @@ function MarkAttendancePage() {
     // Coordinates for National Institute of Technology Calicut (11.3204° N, 75.9374° E)
     const targetCoords = {
         latitude: 11.3204,
+        
         longitude: 75.9374
     };
 
