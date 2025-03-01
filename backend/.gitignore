@@ -1,0 +1,43 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (DO NOT COMMIT YOUR .env FILE)
+.env
+
+# OS/Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cache files
+.cache/
+tmp/
+dist/
+out/
+
+# Optional: coverage from testing tools like Jest
+coverage/
+
+# Optional: if you use TypeScript
+*.tsbuildinfo
+
+# Optional: if you use Docker
+docker-compose.override.yml
+
+# Optional: if you use PM2 process manager
+pm2.log
+pm2.pid
+
+# Optional: Ignore build folder if you transpile code (like TypeScript -> JS)
+build/
