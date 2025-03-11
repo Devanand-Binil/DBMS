@@ -1,1 +1,121 @@
 
+/* Main Container for Sidebar + Content */
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* Sidebar - Fixed Width */
+.sidebar {
+    width: 250px;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    flex-shrink: 0;  /* Important: Don't let sidebar shrink */
+}
+
+.sidebar .profile-section {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.profile-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    margin-bottom: 10px;
+}
+
+.sidebar h3 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.sidebar p {
+    font-size: 0.9em;
+    margin: 5px 0;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li {
+    margin: 5px 0;
+}
+
+.sidebar-menu a {
+    display: block;
+    padding: 10px;
+    color: white;
+    text-decoration: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    text-align: center;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu .active a {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Main Content - Takes Remaining Space */
+.main-content {
+    flex-grow: 1; /* Take all remaining space */
+    padding: 30px;
+    background-color: white;
+    margin: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow-y: auto; /* In case content is long */
+    box-sizing: border-box;
+}
+
+/* Alert Message */
+.alert {
+    padding: 10px;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 15px;
+    border-radius: 5px;
+}
+
+/* Form Elements */
+form label {
+    display: block;
+    margin: 15px 0 5px;
+}
+
+form textarea,
+form select,
+form input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+
+form button {
+    margin-top: 20px;
+    padding: 10px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+form button:hover {
+    background-color: #218838;
+}
