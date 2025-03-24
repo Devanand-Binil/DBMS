@@ -91,31 +91,7 @@
     border-radius: 5px;
 }
 
-/* Form Elements */
-form label {
-    display: block;
-    margin: 15px 0 5px;
-}
 
-form textarea,
-form select,
-form input[type="file"] {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    box-sizing: border-box;
-}
 
-form button {
-    margin-top: 20px;
-    padding: 10px 15px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 5px;
-}
 
-form button:hover {
-    background-color: #218838;
-}
+

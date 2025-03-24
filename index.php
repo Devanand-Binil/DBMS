@@ -43,13 +43,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Invalid credentials!";
     }
 }
-?>
-
-<!DOCTYPE html>
+?><!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Login - Smart Attendance</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- <link rel="stylesheet" href="css/styles.css"> -->
+    <style>
+        body {
+            background: url('public/1.png') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            position:fixed;
+            width: 500px;
+            margin-top:400px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background: rgba(250,250,250, 0.5); /* Semi-transparent background */
+        }
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .login-container input, .login-container select, .login-container button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+        }
+        .login-container .error {
+            color: red;
+            text-align: center;
+        }
+        button {
+            background-color: rgb(114, 107, 219);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: rgb(54, 90, 158);
+        }
+    </style>
 </head>
 <body>
 
