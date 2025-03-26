@@ -125,6 +125,7 @@ if (!$sessions) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -138,25 +139,25 @@ if (!$sessions) {
             --success: #2ecc71;
             --danger: #e74c3c;
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
             background-color: #f5f7fa;
             color: #333;
             line-height: 1.6;
         }
-        
+
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
-        
+
         .sidebar {
             width: 250px;
             background-color: var(--primary);
@@ -164,21 +165,21 @@ if (!$sessions) {
             padding: 20px 0;
             position: fixed;
             height: 100%;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         .sidebar-header {
             padding: 0 20px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .sidebar-profile {
             display: flex;
             align-items: center;
             padding: 15px 20px;
             margin-bottom: 20px;
         }
-        
+
         .profile-photo {
             width: 50px;
             height: 50px;
@@ -187,11 +188,11 @@ if (!$sessions) {
             margin-right: 15px;
             border: 2px solid var(--secondary);
         }
-        
+
         .sidebar-menu {
             list-style: none;
         }
-        
+
         .sidebar-menu a {
             display: block;
             color: white;
@@ -199,43 +200,47 @@ if (!$sessions) {
             padding: 12px 20px;
             transition: all 0.3s;
         }
-        
-        .sidebar-menu a:hover, .sidebar-menu a.active {
-            background-color: rgba(255,255,255,0.1);
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: rgba(255, 255, 255, 0.1);
             border-left: 3px solid var(--secondary);
         }
-        
+
         .main-content {
             margin-left: 250px;
             padding: 30px;
             width: calc(100% - 250px);
         }
-        
+
         .card {
             background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             padding: 25px;
             margin-bottom: 30px;
         }
-        
-        h1, h2, h3 {
+
+        h1,
+        h2,
+        h3 {
             color: var(--primary);
             margin-bottom: 20px;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
             color: var(--dark);
         }
-        
-        select, input {
+
+        select,
+        input {
             width: 100%;
             padding: 10px 15px;
             border: 1px solid #ddd;
@@ -243,13 +248,15 @@ if (!$sessions) {
             font-size: 16px;
             transition: border 0.3s;
         }
-        
-        select:focus, input:focus {
+
+        select:focus,
+        input:focus {
             outline: none;
             border-color: var(--secondary);
         }
-        
-        button, .btn {
+
+        button,
+        .btn {
             background-color: var(--secondary);
             color: white;
             border: none;
@@ -259,231 +266,174 @@ if (!$sessions) {
             font-size: 16px;
             transition: background 0.3s;
         }
-        
-        button:hover, .btn:hover {
+
+        button:hover,
+        .btn:hover {
             background-color: #2980b9;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
             background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
-        
-        th, td {
+
+        th,
+        td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
-        
+
         th {
             background-color: var(--primary);
             color: white;
         }
-        
+
         tr:hover {
             background-color: #f9f9f9;
         }
-        
+
         .status-active {
             color: var(--success);
             font-weight: 600;
         }
-        
+
         .status-inactive {
             color: var(--danger);
             font-weight: 600;
         }
-        
+
         .alert {
             padding: 15px;
+            border-radius: 5px;
             margin-bottom: 20px;
-            border-radius: 4px;
         }
-        
+
         .alert-success {
             background-color: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
         }
-        
+
         .alert-danger {
             background-color: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .filters {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .filter-group {
-            flex: 1;
-            min-width: 200px;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard-container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                position: relative;
-                height: auto;
-            }
-            
-            .main-content {
-                margin-left: 0;
-                width: 100%;
-            }
-            
-            .filters {
-                flex-direction: column;
-                gap: 10px;
-            }
         }
     </style>
 </head>
+
 <body>
-<div class="dashboard-container">
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h3>Faculty Dashboard</h3>
-        </div>
-        
-        <div class="sidebar-profile">
-            <img src="<?= htmlspecialchars($faculty['profile_photo']) ?>" class="profile-photo" alt="Profile">
-            <div>
-                <h4><?= htmlspecialchars($faculty['name']) ?></h4>
-                <small>Faculty</small>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Faculty Dashboard</h2>
             </div>
-        </div>
-        
-        <ul class="sidebar-menu">
-            <li><a href="faculty_dashboard.php">Dashboard</a></li>
-            <li><a href="faculty_manage_sessions.php" class="active">Manage Sessions</a></li>
-            <li><a href="faculty_leave_review.php">Review Leave Applications</a></li>
-            <li><a href="logout.php">Logout</a></li>
-        </ul>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1>Manage Class Sessions</h1>
-        
-        <?php if (isset($success)): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($error)): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
-        
-        <div class="card">
-            <h2>Create New Session</h2>
-            <form method="POST">
-                <div class="form-group">
-                    <label for="class_name">Class Name</label>
-                    <select id="class_name" name="class_name" required>
-                        <option value="">Select Class</option>
-                        <?php while ($row = $classes->fetch_assoc()): ?>
-                            <option value="<?= htmlspecialchars($row['class_name']) ?>">
-                                <?= htmlspecialchars($row['class_name']) ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
+            <div class="sidebar-profile">
+                <img src="<?php echo htmlspecialchars($faculty['profile_photo']); ?>" alt="Profile" class="profile-photo">
+                <div>
+                    <p><?php echo htmlspecialchars($faculty['name']); ?></p>
+                    <small>Faculty</small>
                 </div>
-                
-                <div class="form-group">
-                    <label for="code">Class Code</label>
-                    <input type="text" id="code" name="code" required 
-                           placeholder="Enter unique code for students to join">
-                </div>
-                
-                <div class="form-group">
-                    <label for="expires_at">Session Expiry Date & Time</label>
-                    <input type="datetime-local" id="expires_at" name="expires_at" required>
-                </div>
-                
-                <button type="submit">Create Session</button>
-            </form>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="faculty_dashboard.php" class="active">Manage Sessions</a></li>
+                <li><a href="logout.php">Logout</a></li>
+            </ul>
         </div>
 
-        <div class="card">
-            <h2>Existing Sessions</h2>
-            
-            <div class="filters">
+        <div class="main-content">
+            <h1>Manage Class Sessions</h1>
+
+            <!-- Alert Messages -->
+            <?php if (isset($error)) : ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+            <?php elseif (isset($success)) : ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+            <?php endif; ?>
+
+            <!-- Create Session Form -->
+            <div class="card">
+                <h3>Create New Session</h3>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="class_name">Class Name</label>
+                        <select name="class_name" id="class_name" required>
+                            <option value="">Select a class</option>
+                            <?php while ($row = $classes->fetch_assoc()) : ?>
+                                <option value="<?php echo htmlspecialchars($row['class_name']); ?>"><?php echo htmlspecialchars($row['class_name']); ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="code">Session Code</label>
+                        <input type="text" name="code" id="code" maxlength="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="expires_at">Session Expiry</label>
+                        <input type="datetime-local" name="expires_at" id="expires_at" required>
+                    </div>
+                    <button type="submit">Create Session</button>
+                </form>
+            </div>
+
+            <!-- Filter Sessions -->
+            <div class="card">
+                <h3>Filter Sessions</h3>
                 <form method="GET">
-                    <div class="filter-group">
-                        <label for="filter_class">Filter by Class</label>
-                        <select id="filter_class" name="filter_class">
-                            <option value="">All Classes</option>
-                            <?php
-                            $class_list = $conn->query("SELECT DISTINCT class_name FROM class_sessions WHERE faculty_name='".$conn->real_escape_string($faculty['name'])."'");
-                            while ($row = $class_list->fetch_assoc()):
-                                $selected = ($row['class_name'] === $filter_class) ? 'selected' : '';
-                            ?>
-                                <option value="<?= htmlspecialchars($row['class_name']) ?>" <?= $selected ?>>
-                                    <?= htmlspecialchars($row['class_name']) ?>
+                    <div class="form-group">
+                        <label for="filter_class">Class Name</label>
+                        <select name="filter_class" id="filter_class">
+                            <option value="">All</option>
+                            <?php $classes->data_seek(0); ?>
+                            <?php while ($row = $classes->fetch_assoc()) : ?>
+                                <option value="<?php echo htmlspecialchars($row['class_name']); ?>" <?php echo ($filter_class == $row['class_name']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($row['class_name']); ?>
                                 </option>
                             <?php endwhile; ?>
                         </select>
                     </div>
-                    
-                    <div class="filter-group">
-                        <label for="filter_status">Filter by Status</label>
-                        <select id="filter_status" name="filter_status">
-                            <option value="">All Statuses</option>
-                            <option value="active" <?= ($filter_status === 'active') ? 'selected' : '' ?>>Active</option>
-                            <option value="inactive" <?= ($filter_status === 'inactive') ? 'selected' : '' ?>>Inactive</option>
+                    <div class="form-group">
+                        <label for="filter_status">Status</label>
+                        <select name="filter_status" id="filter_status">
+                            <option value="">All</option>
+                            <option value="active" <?php echo ($filter_status == 'active') ? 'selected' : ''; ?>>Active</option>
+                            <option value="inactive" <?php echo ($filter_status == 'inactive') ? 'selected' : ''; ?>>Inactive</option>
                         </select>
                     </div>
-                    
-                    <div class="filter-group" style="align-self: flex-end;">
-                        <button type="submit">Apply Filters</button>
-                        <?php if ($filter_class || $filter_status): ?>
-                            <a href="faculty_manage_sessions.php" style="margin-left: 10px; color: var(--secondary);">Clear Filters</a>
-                        <?php endif; ?>
-                    </div>
+                    <button type="submit">Apply Filters</button>
                 </form>
             </div>
-            
-            <div style="overflow-x: auto;">
+
+            <!-- Session Table -->
+            <div class="card">
+                <h3>Session List</h3>
                 <table>
                     <thead>
                         <tr>
                             <th>Class Name</th>
-                            <th>Class Code</th>
+                            <th>Code</th>
                             <th>Status</th>
-                            <th>Created At</th>
                             <th>Expires At</th>
+                            <th>Created At</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($sessions->num_rows > 0): ?>
-                            <?php while ($row = $sessions->fetch_assoc()): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($row['class_name']) ?></td>
-                                    <td><?= htmlspecialchars($row['code']) ?></td>
-                                    <td>
-                                        <span class="status-<?= htmlspecialchars($row['status']) ?>">
-                                            <?= ucfirst(htmlspecialchars($row['status'])) ?>
-                                        </span>
-                                    </td>
-                                    <td><?= htmlspecialchars($row['created_at']) ?></td>
-                                    <td><?= htmlspecialchars($row['expires_at']) ?></td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else: ?>
+                        <?php while ($row = $sessions->fetch_assoc()) : ?>
                             <tr>
-                                <td colspan="5" style="text-align: center;">No sessions found</td>
+                                <td><?php echo htmlspecialchars($row['class_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['code']); ?></td>
+                                <td class="<?php echo ($row['status'] == 'active') ? 'status-active' : 'status-inactive'; ?>">
+                                    <?php echo htmlspecialchars(ucfirst($row['status'])); ?>
+                                </td>
+                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row['expires_at']))); ?></td>
+                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row['created_at']))); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                        <?php if ($sessions->num_rows == 0) : ?>
+                            <tr>
+                                <td colspan="5">No sessions found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -491,6 +441,7 @@ if (!$sessions) {
             </div>
         </div>
     </div>
-</div>
 </body>
+
 </html>
+

@@ -22,11 +22,16 @@ $student = $conn->query("SELECT * FROM students WHERE rollno='$rollno'")->fetch_
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
+        // Validate inputs
+        if (empty($_POST['name'])) {
+            throw new Exception("Name is required");
+        }
+
         $name = $conn->real_escape_string($_POST['name']);
         $address = $conn->real_escape_string($_POST['address']);
         $relativePath = $student['profile_photo'] ?? 'uploads/default.png';
 
-        // Handle file upload
+        // Handle file upload only if a file was actually uploaded
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
             $uploadsDir = __DIR__ . '/uploads/';
             
@@ -75,13 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             } else {
                 throw new Exception("Failed to move uploaded file. Check permissions.");
             }
-        } elseif (isset($_FILES['photo'])) {
-            // There was an error with the upload
-            throw new Exception("File upload error: " . $_FILES['photo']['error']);
         }
 
         // Use prepared statement to prevent SQL injection
         $stmt = $conn->prepare("UPDATE students SET name=?, address=?, profile_photo=? WHERE rollno=?");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+        
         $stmt->bind_param("ssss", $name, $address, $relativePath, $rollno);
         
         if (!$stmt->execute()) {
@@ -181,10 +187,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .error-message {
             color: red;
             margin: 10px 0;
+            padding: 10px;
+            border: 1px solid red;
+            background-color: #ffeeee;
         }
         .success-message {
             color: green;
             margin: 10px 0;
+            padding: 10px;
+            border: 1px solid green;
+            background-color: #eeffee;
         }
     </style>
 </head>

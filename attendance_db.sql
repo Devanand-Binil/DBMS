@@ -55,15 +55,16 @@ CREATE TABLE IF NOT EXISTS leave_applications (
 );
 
 -- Class Sessions Table (for dynamic class creation by faculty)
-CREATE TABLE IF NOT EXISTS class_sessions (
+CREATE TABLE class_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    class_name VARCHAR(100) NOT NULL,
-    code VARCHAR(50) UNIQUE NOT NULL,
+    class_name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL,
     faculty_name VARCHAR(255) NOT NULL,
-    latitude DOUBLE NOT NULL,
-    longitude DOUBLE NOT NULL,
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 
