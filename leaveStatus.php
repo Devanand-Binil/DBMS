@@ -9,29 +9,15 @@ if ($_SESSION['role'] !== 'Student') {
 
 $rollno = $_SESSION['user'];
 
-// Fetch student details
-$studentQuery = $conn->query("SELECT name FROM students WHERE rollno='$rollno'");
-if ($studentQuery->num_rows > 0) {
-    $student = $studentQuery->fetch_assoc();
-} else {
-    $student = ['name' => 'Unknown'];
-}
-
-// Fetch attendance records with class name from classes table
-$attendanceQuery = $conn->query("
-    SELECT a.date, a.status, c.class_name 
-    FROM attendance a
-    JOIN classes c ON a.class_id = c.id
-    WHERE a.rollno='$rollno' 
-    ORDER BY a.date DESC
-");
+// Fetch leave status
+$leaveQuery = $conn->query("SELECT * FROM leave_requests WHERE rollno='$rollno' ORDER BY date_submitted DESC");
 
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>My Attendance</title>
+    <title>Leave Status</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
         body {
@@ -86,34 +72,38 @@ $attendanceQuery = $conn->query("
 <!-- Sidebar -->
 <div class="sidebar">
     <h3>Student Dashboard</h3>
-    <p>Welcome, <?= htmlspecialchars($student['name']) ?> (<?= htmlspecialchars($rollno) ?>)</p>
+    <p>Welcome, <?= htmlspecialchars($_SESSION['user']) ?></p>
     <a href="student_dashboard.php">Dashboard</a>
     <a href="view_attendance.php">View Attendance</a>
     <a href="submit_leave.php">Apply for Leave</a>
-    <a href="LeaveStatus.php">Leave Status</a>
+    <a href="leaveStatus.php">Leave Status</a>
     <a href="logout.php">Logout</a>
 </div>
 
 <!-- Main Content -->
 <div class="main">
-    <h2>My Attendance Records</h2>
+    <h2>My Leave Status</h2>
     <table>
         <tr>
-            <th>Date</th>
-            <th>Class Name</th>
+            <th>Date Submitted</th>
+            <th>Leave Start Date</th>
+            <th>Leave End Date</th>
             <th>Status</th>
+            <th>Remarks</th>
         </tr>
-        <?php if ($attendanceQuery->num_rows > 0): ?>
-            <?php while ($row = $attendanceQuery->fetch_assoc()): ?>
+        <?php if ($leaveQuery->num_rows > 0): ?>
+            <?php while ($row = $leaveQuery->fetch_assoc()): ?>
                 <tr>
-                    <td><?= htmlspecialchars(date('Y-m-d', strtotime($row['date']))) ?></td>
-                    <td><?= htmlspecialchars($row['class_name']) ?></td>
+                    <td><?= htmlspecialchars(date('Y-m-d', strtotime($row['date_submitted']))) ?></td>
+                    <td><?= htmlspecialchars(date('Y-m-d', strtotime($row['start_date']))) ?></td>
+                    <td><?= htmlspecialchars(date('Y-m-d', strtotime($row['end_date']))) ?></td>
                     <td><?= htmlspecialchars($row['status']) ?></td>
+                    <td><?= htmlspecialchars($row['remarks']) ?></td>
                 </tr>
             <?php endwhile; ?>
         <?php else: ?>
             <tr>
-                <td colspan="3">No attendance records found.</td>
+                <td colspan="5">No leave requests found.</td>
             </tr>
         <?php endif; ?>
     </table>

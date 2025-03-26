@@ -8,9 +8,9 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $rollno = $_POST['rollno'];
-    $password = $_POST['password'];
-    $role = $_POST['role'];
+    $rollno = isset($_POST['rollno']) ? $_POST['rollno'] : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $role = isset($_POST['role']) ? $_POST['role'] : '';
 
     // Determine the table based on role
     if ($role == 'Student') {
@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Invalid credentials!";
     }
 }
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Login - Smart Attendance</title>
@@ -61,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .login-container {
             position:fixed;
             width: 500px;
-            margin-top:400px;
+            margin-top:300px;
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 10px;
@@ -90,12 +91,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         button {
             background-color: rgb(114, 107, 219);
-            color: white;
+            color: black;
             border: none;
             cursor: pointer;
         }
         button:hover {
             background-color: rgb(54, 90, 158);
+        }
+        .form .button{
+            color:blue
         }
     </style>
 </head>

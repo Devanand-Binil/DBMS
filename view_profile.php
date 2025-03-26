@@ -1,45 +1,103 @@
 <?php
-session_start();
-require 'db.php';
+// Enable maximum error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-if ($_SESSION['role'] !== 'Student') {
+session_start();
+
+// Verify session and role
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
     header('Location: index.php');
     exit;
+}
+
+require 'db.php';
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
 }
 
 $rollno = $_SESSION['user'];
 $student = $conn->query("SELECT * FROM students WHERE rollno='$rollno'")->fetch_assoc();
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $name = $conn->real_escape_string($_POST['name']);
-    $address = $conn->real_escape_string($_POST['address']);
+    try {
+        $name = $conn->real_escape_string($_POST['name']);
+        $address = $conn->real_escape_string($_POST['address']);
+        $relativePath = $student['profile_photo'] ?? 'uploads/default.png';
 
-    // Check if the uploads folder exists, create if not
-    $uploadsDir = __DIR__ . '/uploads/';
-    if (!is_dir($uploadsDir)) {
-        mkdir($uploadsDir, 0777, true);
-    }
+        // Handle file upload
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $uploadsDir = __DIR__ . '/uploads/';
+            
+            // Create directory if it doesn't exist
+            if (!is_dir($uploadsDir)) {
+                if (!mkdir($uploadsDir, 0755, true)) {
+                    throw new Exception("Could not create upload directory");
+                }
+            }
 
-    if (!empty($_FILES['photo']['name'])) {
-        $filename = basename($_FILES['photo']['name']);
-        $filename = time() . '_' . preg_replace("/[^a-zA-Z0-9\._-]/", "_", $filename); // Clean filename
-        $targetPath = $uploadsDir . $filename;
+            // Verify directory is writable
+            if (!is_writable($uploadsDir)) {
+                throw new Exception("Upload directory is not writable");
+            }
 
-        if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetPath)) {
-            // Save the relative path (for browser access)
-            $relativePath = "uploads/$filename";
-            $conn->query("UPDATE students SET profile_photo='$relativePath' WHERE rollno='$rollno'");
-        } else {
-            echo "<script>alert('File upload failed. Please check folder permissions.');</script>";
+            // Validate file type
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($fileInfo, $_FILES['photo']['tmp_name']);
+            finfo_close($fileInfo);
+
+            if (!in_array($mime, $allowedTypes)) {
+                throw new Exception("Invalid file type. Only JPG, PNG, and GIF are allowed.");
+            }
+
+            // Validate file size
+            if ($_FILES['photo']['size'] > 2000000) { // 2MB
+                throw new Exception("File too large. Maximum size is 2MB.");
+            }
+
+            // Generate unique filename
+            $extension = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+            $filename = time() . '_' . uniqid() . '.' . $extension;
+            $targetPath = $uploadsDir . $filename;
+
+            // Move uploaded file
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $targetPath)) {
+                $relativePath = "uploads/" . $filename;
+                
+                // Delete old file if it exists and it's not the default
+                if (!empty($student['profile_photo']) && 
+                    $student['profile_photo'] !== 'uploads/default.png' && 
+                    file_exists(__DIR__ . '/' . $student['profile_photo'])) {
+                    @unlink(__DIR__ . '/' . $student['profile_photo']);
+                }
+            } else {
+                throw new Exception("Failed to move uploaded file. Check permissions.");
+            }
+        } elseif (isset($_FILES['photo'])) {
+            // There was an error with the upload
+            throw new Exception("File upload error: " . $_FILES['photo']['error']);
         }
+
+        // Use prepared statement to prevent SQL injection
+        $stmt = $conn->prepare("UPDATE students SET name=?, address=?, profile_photo=? WHERE rollno=?");
+        $stmt->bind_param("ssss", $name, $address, $relativePath, $rollno);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Database error: " . $stmt->error);
+        }
+
+        $_SESSION['success'] = "Profile updated successfully!";
+        header('Location: view_profile.php');
+        exit;
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Error: " . $e->getMessage();
+        header('Location: view_profile.php');
+        exit;
     }
-
-    $conn->query("UPDATE students SET name='$name', address='$address' WHERE rollno='$rollno'");
-    header('Location: view_profile.php');
-    exit;
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -120,6 +178,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 50%;
             margin-bottom: 15px;
         }
+        .error-message {
+            color: red;
+            margin: 10px 0;
+        }
+        .success-message {
+            color: green;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -128,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!-- Sidebar -->
     <div class="sidebar">
         <h3>Student Dashboard</h3>
-        <img src="<?= htmlspecialchars($student['profile_photo']) ?>" class="profile-photo">
+        <img src="<?= htmlspecialchars($student['profile_photo'] ?? 'uploads/default.png') ?>" class="profile-photo">
         <p>Roll No: <?= htmlspecialchars($rollno) ?></p>
         <a href="student_dashboard.php">Home</a>
         <a href="view_profile.php" class="active">View Profile</a>
@@ -142,6 +208,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="main-content">
         <div class="profile-form">
             <h2>Edit Profile</h2>
+            
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="error-message"><?= htmlspecialchars($_SESSION['error']) ?></div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+            
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="success-message"><?= htmlspecialchars($_SESSION['success']) ?></div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+            
             <form method="POST" enctype="multipart/form-data">
                 <label>Full Name</label>
                 <input type="text" name="name" value="<?= htmlspecialchars($student['name']) ?>" required>
@@ -150,10 +227,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="text" name="address" value="<?= htmlspecialchars($student['address']) ?>">
 
                 <label>Profile Photo</label>
-                <input type="file" name="photo">
+                <input type="file" name="photo" accept="image/jpeg, image/png, image/gif">
 
                 <?php if (!empty($student['profile_photo'])): ?>
                     <img src="<?= htmlspecialchars($student['profile_photo']) ?>" class="profile-photo-preview">
+                    <p>Current photo</p>
                 <?php endif; ?>
 
                 <button type="submit">Save Changes</button>

@@ -1,222 +1,496 @@
 <?php
+// Enable error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 require 'db.php';
 
-if ($_SESSION['role'] !== 'Faculty') {
+// Check if user is logged in and is faculty
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Faculty') {
     header('Location: index.php');
     exit;
 }
 
-// Auto-expire logic: Update sessions that are past expiry time
+// Check database connection
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
+}
+
+// Auto-expire logic for sessions
 $conn->query("UPDATE class_sessions SET status='inactive' WHERE expires_at <= NOW() AND status='active'");
 
 $rollno = $_SESSION['user'];
-$faculty_result = $conn->query("SELECT name FROM faculty WHERE rollno='$rollno'");
-$faculty_name = ($faculty_result->num_rows > 0) ? $faculty_result->fetch_assoc()['name'] : 'Unknown';
+$faculty_stmt = $conn->prepare("SELECT name, profile_photo FROM faculty WHERE rollno=?");
+if (!$faculty_stmt) {
+    die("Error preparing faculty query: " . $conn->error);
+}
+$faculty_stmt->bind_param("s", $rollno);
+$faculty_stmt->execute();
+$faculty_result = $faculty_stmt->get_result();
+$faculty = ($faculty_result->num_rows > 0) ? $faculty_result->fetch_assoc() : ['name' => 'Unknown', 'profile_photo' => 'uploads/default.png'];
 
-// Handle form submission - Create New Class Session
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $class_name = $_POST['class_name'];
-    $code = $_POST['code'];
-    $expires_at = $_POST['expires_at']; // Faculty sets expiry date & time
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['class_name'], $_POST['code'], $_POST['expires_at'])) {
+    $class_name = trim($_POST['class_name']);
+    $code = trim($_POST['code']);
+    $expires_at = trim($_POST['expires_at']);
 
-    // Fetch latitude & longitude from classes table
-    $class_query = $conn->query("SELECT latitude, longitude FROM classes WHERE class_name='$class_name'");
-    if ($class_query->num_rows > 0) {
-        $class = $class_query->fetch_assoc();
-        $latitude = $class['latitude'];
-        $longitude = $class['longitude'];
-
-        // Insert into class_sessions
-        $conn->query("INSERT INTO class_sessions (class_name, code, faculty_name, latitude, longitude, status, expires_at, created_at) 
-                      VALUES ('$class_name', '$code', '$faculty_name', '$latitude', '$longitude', 'active', '$expires_at', NOW())");
-
-        echo "<script>alert('Class session created successfully!');</script>";
+    // Validate inputs
+    if (empty($class_name) || empty($code) || empty($expires_at)) {
+        $error = "All fields are required!";
     } else {
-        echo "<script>alert('Invalid class selected.');</script>";
+        // Get class location
+        $class_stmt = $conn->prepare("SELECT latitude, longitude FROM classes WHERE class_name=?");
+        if (!$class_stmt) {
+            die("Error preparing class query: " . $conn->error);
+        }
+        $class_stmt->bind_param("s", $class_name);
+        $class_stmt->execute();
+        $class_result = $class_stmt->get_result();
+
+        if ($class_result->num_rows > 0) {
+            $class = $class_result->fetch_assoc();
+
+            // Insert new session
+            $insert_stmt = $conn->prepare("INSERT INTO class_sessions 
+                (class_name, code, faculty_name, latitude, longitude, status, expires_at, created_at) 
+                VALUES (?, ?, ?, ?, ?, 'active', ?, NOW())");
+            if (!$insert_stmt) {
+                die("Error preparing insert query: " . $conn->error);
+            }
+            $insert_stmt->bind_param(
+                "sssdds",
+                $class_name,
+                $code,
+                $faculty['name'],
+                $class['latitude'],
+                $class['longitude'],
+                $expires_at
+            );
+
+            if ($insert_stmt->execute()) {
+                $success = "Class session created successfully!";
+            } else {
+                $error = "Error creating session: " . $conn->error;
+            }
+        } else {
+            $error = "Invalid class selected!";
+        }
     }
 }
 
-// Fetch available classes
+// Get all classes for dropdown
 $classes = $conn->query("SELECT class_name FROM classes");
-
-// Fetch sessions with filtering
-$filter_class = $_GET['filter_class'] ?? '';
-$filter_status = $_GET['filter_status'] ?? '';
-
-$query = "SELECT * FROM class_sessions WHERE 1=1";
-if ($filter_class) {
-    $query .= " AND class_name='$filter_class'";
+if (!$classes) {
+    die("Error fetching classes: " . $conn->error);
 }
-if ($filter_status) {
-    $query .= " AND status='$filter_status'";
+
+// Filter handling
+$filter_class = isset($_GET['filter_class']) ? $conn->real_escape_string($_GET['filter_class']) : '';
+$filter_status = isset($_GET['filter_status']) ? $conn->real_escape_string($_GET['filter_status']) : '';
+
+// Build query with filters
+$query = "SELECT * FROM class_sessions WHERE faculty_name = ?";
+$params = [$faculty['name']];
+$types = "s";
+
+if (!empty($filter_class)) {
+    $query .= " AND class_name = ?";
+    $params[] = $filter_class;
+    $types .= "s";
 }
+
+if (!empty($filter_status)) {
+    $query .= " AND status = ?";
+    $params[] = $filter_status;
+    $types .= "s";
+}
+
 $query .= " ORDER BY created_at DESC";
 
-$sessions = $conn->query($query);
+// Execute filtered query
+$stmt = $conn->prepare($query);
+if (!$stmt) {
+    die("Error preparing session query: " . $conn->error);
+}
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$sessions = $stmt->get_result();
+if (!$sessions) {
+    die("Error executing session query: " . $conn->error);
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Manage Classes</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard - Manage Sessions</title>
     <style>
-        /* Sidebar Styles */
-        .dashboard {
-            display: flex;
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
         }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
         .sidebar {
             width: 250px;
-            background-color: #2c3e50;
+            background-color: var(--primary);
             color: white;
-            padding: 20px;
-            height: 100vh;
+            padding: 20px 0;
             position: fixed;
-            left: 0;
-            top: 0;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            height: 100%;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
-        .sidebar h3 {
-            text-align: center;
+        
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-profile {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
             margin-bottom: 20px;
         }
-        .sidebar a {
+        
+        .profile-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid var(--secondary);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .sidebar-menu a {
             display: block;
             color: white;
             text-decoration: none;
-            padding: 12px 15px;
-            margin: 5px 0;
-            border-radius: 5px;
+            padding: 12px 20px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+            width: calc(100% - 250px);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+        
+        button, .btn {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
             transition: background 0.3s;
         }
-        .sidebar a:hover, .sidebar a.active {
-            background-color: #1a252f;
+        
+        button:hover, .btn:hover {
+            background-color: #2980b9;
         }
-
-        /* Adjust the main content to avoid overlap */
-        .main {
-            margin-left: 270px;
-            padding: 20px;
-            width: calc(100% - 270px);
-        }
-
-        /* Table Styles */
+        
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
+        
         th, td {
-            padding: 10px;
-            text-align: center;
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .filter-container {
-            margin-bottom: 15px;
+        
+        th {
+            background-color: var(--primary);
+            color: white;
         }
-
-        /* Mobile Optimization */
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .status-active {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .status-inactive {
+            color: var(--danger);
+            font-weight: 600;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
         @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            
             .sidebar {
                 width: 100%;
-                height: auto;
                 position: relative;
+                height: auto;
             }
-            .main {
+            
+            .main-content {
                 margin-left: 0;
                 width: 100%;
+            }
+            
+            .filters {
+                flex-direction: column;
+                gap: 10px;
             }
         }
     </style>
 </head>
 <body>
-
-<div class="dashboard">
+<div class="dashboard-container">
     <!-- Sidebar -->
     <div class="sidebar">
-        <h3>Faculty Dashboard</h3>
-        <a href="faculty_dashboard.php">Dashboard</a>
-        <a href="faculty_manage_sessions.php" class="active">Manage Sessions</a>
-        <a href="faculty_leave_review.php">Review Leave Applications</a>
-        <a href="logout.php">Logout</a>
+        <div class="sidebar-header">
+            <h3>Faculty Dashboard</h3>
+        </div>
+        
+        <div class="sidebar-profile">
+            <img src="<?= htmlspecialchars($faculty['profile_photo']) ?>" class="profile-photo" alt="Profile">
+            <div>
+                <h4><?= htmlspecialchars($faculty['name']) ?></h4>
+                <small>Faculty</small>
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li><a href="faculty_dashboard.php">Dashboard</a></li>
+            <li><a href="faculty_manage_sessions.php" class="active">Manage Sessions</a></li>
+            <li><a href="faculty_leave_review.php">Review Leave Applications</a></li>
+            <li><a href="logout.php">Logout</a></li>
+        </ul>
     </div>
 
     <!-- Main Content -->
-    <div class="main">
-        <h2>Schedule New Class Session</h2>
-        <form method="POST">
-            <label>Class Name</label>
-            <select name="class_name" required>
-                <option value="">Select Class</option>
-                <?php while ($row = $classes->fetch_assoc()) { ?>
-                    <option value="<?= htmlspecialchars($row['class_name']) ?>"><?= htmlspecialchars($row['class_name']) ?></option>
-                <?php } ?>
-            </select>
-
-            <label>Class Code (for students to join)</label>
-            <input type="text" name="code" required>
-
-            <label>Session Expiry Date & Time</label>
-            <input type="datetime-local" name="expires_at" required>
-
-            <button type="submit">Create Session</button>
-        </form>
-
-        <h3>Existing Sessions</h3>
-
-        <!-- Filter Options -->
-        <div class="filter-container">
-            <form method="GET">
-                <label>Filter by Class:</label>
-                <select name="filter_class">
-                    <option value="">All</option>
-                    <?php
-                    $class_list = $conn->query("SELECT DISTINCT class_name FROM class_sessions");
-                    while ($row = $class_list->fetch_assoc()) {
-                        $selected = ($row['class_name'] === $filter_class) ? 'selected' : '';
-                        echo "<option value='{$row['class_name']}' $selected>{$row['class_name']}</option>";
-                    }
-                    ?>
-                </select>
-
-                <label>Filter by Status:</label>
-                <select name="filter_status">
-                    <option value="">All</option>
-                    <option value="active" <?= ($filter_status === 'active') ? 'selected' : '' ?>>Active</option>
-                    <option value="inactive" <?= ($filter_status === 'inactive') ? 'selected' : '' ?>>Inactive</option>
-                </select>
-
-                <button type="submit">Filter</button>
+    <div class="main-content">
+        <h1>Manage Class Sessions</h1>
+        
+        <?php if (isset($success)): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+        <?php endif; ?>
+        
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+        
+        <div class="card">
+            <h2>Create New Session</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="class_name">Class Name</label>
+                    <select id="class_name" name="class_name" required>
+                        <option value="">Select Class</option>
+                        <?php while ($row = $classes->fetch_assoc()): ?>
+                            <option value="<?= htmlspecialchars($row['class_name']) ?>">
+                                <?= htmlspecialchars($row['class_name']) ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="code">Class Code</label>
+                    <input type="text" id="code" name="code" required 
+                           placeholder="Enter unique code for students to join">
+                </div>
+                
+                <div class="form-group">
+                    <label for="expires_at">Session Expiry Date & Time</label>
+                    <input type="datetime-local" id="expires_at" name="expires_at" required>
+                </div>
+                
+                <button type="submit">Create Session</button>
             </form>
         </div>
 
-        <table>
-            <tr>
-                <th>Class</th>
-                <th>Class Code</th>
-                <th>Faculty</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th>Expires At</th>
-            </tr>
-            <?php while ($row = $sessions->fetch_assoc()): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row['class_name']) ?></td>
-                    <td><?= htmlspecialchars($row['code']) ?></td>
-                    <td><?= htmlspecialchars($row['faculty_name']) ?></td>
-                    <td><?= htmlspecialchars($row['status']) ?></td>
-                    <td><?= htmlspecialchars($row['created_at']) ?></td>
-                    <td><?= htmlspecialchars($row['expires_at']) ?></td>
-                </tr>
-            <?php endwhile; ?>
-        </table>
+        <div class="card">
+            <h2>Existing Sessions</h2>
+            
+            <div class="filters">
+                <form method="GET">
+                    <div class="filter-group">
+                        <label for="filter_class">Filter by Class</label>
+                        <select id="filter_class" name="filter_class">
+                            <option value="">All Classes</option>
+                            <?php
+                            $class_list = $conn->query("SELECT DISTINCT class_name FROM class_sessions WHERE faculty_name='".$conn->real_escape_string($faculty['name'])."'");
+                            while ($row = $class_list->fetch_assoc()):
+                                $selected = ($row['class_name'] === $filter_class) ? 'selected' : '';
+                            ?>
+                                <option value="<?= htmlspecialchars($row['class_name']) ?>" <?= $selected ?>>
+                                    <?= htmlspecialchars($row['class_name']) ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="filter_status">Filter by Status</label>
+                        <select id="filter_status" name="filter_status">
+                            <option value="">All Statuses</option>
+                            <option value="active" <?= ($filter_status === 'active') ? 'selected' : '' ?>>Active</option>
+                            <option value="inactive" <?= ($filter_status === 'inactive') ? 'selected' : '' ?>>Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group" style="align-self: flex-end;">
+                        <button type="submit">Apply Filters</button>
+                        <?php if ($filter_class || $filter_status): ?>
+                            <a href="faculty_manage_sessions.php" style="margin-left: 10px; color: var(--secondary);">Clear Filters</a>
+                        <?php endif; ?>
+                    </div>
+                </form>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>Class Code</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Expires At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($sessions->num_rows > 0): ?>
+                            <?php while ($row = $sessions->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($row['class_name']) ?></td>
+                                    <td><?= htmlspecialchars($row['code']) ?></td>
+                                    <td>
+                                        <span class="status-<?= htmlspecialchars($row['status']) ?>">
+                                            <?= ucfirst(htmlspecialchars($row['status'])) ?>
+                                        </span>
+                                    </td>
+                                    <td><?= htmlspecialchars($row['created_at']) ?></td>
+                                    <td><?= htmlspecialchars($row['expires_at']) ?></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No sessions found</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
-
 </body>
 </html>
