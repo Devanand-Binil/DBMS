@@ -23,88 +23,105 @@ $student = $conn->query("SELECT *, profile_photo as photo FROM students WHERE ro
     <link rel="stylesheet" href="css/styles.css">
     <style>
         :root {
-            --formBg: black;
-            --formTxt: white;
-        }
-
-        [data-theme="light"] {
-            --formBg: white;
-            --formTxt: black;
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
         }
 
         * {
-            font-family: "Montserrat", sans-serif;
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #2596be;
-            color: blue;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
         }
 
         .dashboard-container {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         .sidebar {
             width: 250px;
-            background-color: #1a73e8;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            background-color: var(--primary);
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100%;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        .profile-section {
-            text-align: center;
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-profile {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
             margin-bottom: 20px;
         }
 
         .profile-photo {
-            width: 100px;
+            width: 100px0px;
             height: 100px;
             border-radius: 50%;
-            margin-bottom: 10px;
             object-fit: cover;
-            border: 3px solid white;
-        }
-
-        .sidebar h3 {
-            margin: 0;
-            font-size: 18px;
-            color: white;
-        }
-
-        .sidebar p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: white;
+            margin-right: 15px;
+            border: 2px solid var(--secondary);
         }
 
         .sidebar-menu {
             list-style: none;
-            padding: 0;
-        }
-
-        .sidebar-menu li {
-            margin-bottom: 10px;
         }
 
         .sidebar-menu a {
+            display: block;
             color: white;
             text-decoration: none;
-            display: block;
-            padding: 10px;
-            border-radius: 5px;
-            transition: background 0.3s;
+            padding: 12px 20px;
+            transition: all 0.3s;
         }
 
-        .sidebar-menu a:hover {
-            background-color: #0c5dbb;
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 3px solid var(--secondary);
         }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+            width: calc(100% - 250px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        h1, h2, h3 {
+            /* color: var(--primary); */
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
 
         .main-content {
             flex-grow: 1;
@@ -115,20 +132,7 @@ $student = $conn->query("SELECT *, profile_photo as photo FROM students WHERE ro
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        .main-content h2 {
-            margin-top: 0;
-            color: #1a73e8;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                height: auto;
-            }
-        }
+        
     </style>
 </head>
 <body>
@@ -141,7 +145,8 @@ $student = $conn->query("SELECT *, profile_photo as photo FROM students WHERE ro
                  class="profile-photo" 
                  alt="Profile Photo"
                  onerror="this.src='uploads/default.png'">
-            <h3><?= htmlspecialchars($student['name'] . " " . $student['lastname']) ?></h3>
+            <!-- <h3><?= htmlspecialchars($student['name'] ) ?></h3> -->
+            <h3><?= htmlspecialchars($student['name']) ?></h3>
             <p>Roll No: <?= htmlspecialchars($student['rollno']) ?></p>
         </div>
         <ul class="sidebar-menu">

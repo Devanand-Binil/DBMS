@@ -112,91 +112,193 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>View Profile</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
+               :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
         .dashboard-container {
             display: flex;
-            height: 100vh;
-            margin: 0;
+            min-height: 100vh;
         }
+
         .sidebar {
             width: 250px;
-            background-color: #007bff;
+            background-color: var(--primary);
             color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100%;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-profile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             padding: 20px;
-            box-sizing: border-box;
-            flex-shrink: 0;
-        }
-        .sidebar h3 {
-            margin: 0 0 15px;
-        }
-        .sidebar .profile-photo {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-        }
-        .sidebar a {
-            display: block;
-            padding: 10px;
-            margin: 5px 0;
-            color: white;
-            text-decoration: none;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
+            margin-bottom: 20px;
             text-align: center;
         }
-        .sidebar a:hover, .sidebar .active {
-            background: rgba(255, 255, 255, 0.4);
-        }
-        .main-content {
-            flex-grow: 1;
-            padding: 30px;
-            box-sizing: border-box;
-            overflow-y: auto;
-        }
-        form label {
-            display: block;
-            margin: 10px 0 5px;
-        }
-        form input, form button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            box-sizing: border-box;
-        }
-        form button {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        form button:hover {
-            background-color: #218838;
-        }
-        .profile-form {
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        .profile-photo-preview {
+
+        .profile-photo {
             width: 100px;
             height: 100px;
-            object-fit: cover;
             border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid var(--secondary);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 3px solid var(--secondary);
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+            width: calc(100% - 250px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+            max-width: 800px;
+        }
+
+        h1, h2, h3 {
+            /* color: var(--primary); */
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
             margin-bottom: 15px;
         }
-        .error-message {
-            color: red;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid red;
-            background-color: #ffeeee;
+
+        button {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            margin-top: 10px;
         }
-        .success-message {
-            color: green;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid green;
-            background-color: #eeffee;
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .profile-photo-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin: 15px 0;
+            border: 2px solid var(--secondary);
+            display: block;
+        }
+
+        .current-photo-label {
+            display: block;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px;
+            }
         }
     </style>
 </head>
@@ -205,15 +307,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <div class="dashboard-container">
     <!-- Sidebar -->
     <div class="sidebar">
-        <h3>Student Dashboard</h3>
+        <h3>Student profile</h3>
         <img src="<?= htmlspecialchars($student['profile_photo'] ?? 'uploads/default.png') ?>" class="profile-photo">
+        <h3><?= htmlspecialchars($student['name']) ?></h3>
         <p>Roll No: <?= htmlspecialchars($rollno) ?></p>
-        <a href="student_dashboard.php">Home</a>
-        <a href="view_profile.php" class="active">View Profile</a>
-        <a href="mark_attendance.php">Mark Attendance</a>
-        <a href="view_attendance.php">View Attendance</a>
-        <a href="submit_leave.php">Submit Leave</a>
-        <a href="logout.php">Logout</a>
+        <ul class="sidebar-menu">
+            <li><a href="student_dashboard.php">Home </a></li>
+            <li><a href="mark_attendance.php">Mark Attendance</a></li>
+            <li><a href="view_attendance.php">View Attendance</a></li>
+            <li><a href="submit_leave.php">Submit Leave</a></li>
+            <li><a href="leaveStatus.php">Leave Status</a></li>
+            <li><a href="logout.php">Logout</a></li>
+        </ul>
     </div>
 
     <!-- Main Content -->

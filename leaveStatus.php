@@ -7,8 +7,8 @@ error_reporting(E_ALL);
 session_start();
 require 'db.php';
 
-// Check if user is logged in and is faculty
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Faculty') {
+// Check if user is logged in and is a student
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Student') {
     header('Location: index.php');
     exit;
 }
@@ -18,125 +18,95 @@ if ($conn->connect_error) {
     die("Database connection failed: " . $conn->error);
 }
 
-// First, verify the table structure
-$table_check = $conn->query("SHOW COLUMNS FROM class_sessions LIKE 'expires_at'");
-if ($table_check->num_rows == 0) {
-    // Add missing column if it doesn't exist
-    $conn->query("ALTER TABLE class_sessions ADD COLUMN expires_at DATETIME NOT NULL AFTER longitude");
-}
-
-// Now perform the auto-expire logic
-$conn->query("UPDATE class_sessions SET status='inactive' WHERE expires_at <= NOW() AND status='active'");
-
 $rollno = $_SESSION['user'];
-$faculty_stmt = $conn->prepare("SELECT name, profile_photo FROM faculty WHERE rollno=?");
-if (!$faculty_stmt) {
-    die("Error preparing faculty query: " . $conn->error);
+
+// Get student details
+$student_stmt = $conn->prepare("SELECT name, profile_photo FROM students WHERE rollno=?");
+if (!$student_stmt) {
+    die("Error preparing student query: " . $conn->error);
 }
-$faculty_stmt->bind_param("s", $rollno);
-$faculty_stmt->execute();
-$faculty_result = $faculty_stmt->get_result();
-$faculty = ($faculty_result->num_rows > 0) ? $faculty_result->fetch_assoc() : ['name' => 'Unknown', 'profile_photo' => 'uploads/default.png'];
+$student_stmt->bind_param("s", $rollno);
+$student_stmt->execute();
+$student_result = $student_stmt->get_result();
+$student = ($student_result->num_rows > 0) ? $student_result->fetch_assoc() : ['name' => 'Unknown', 'profile_photo' => 'uploads/default.png'];
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['class_name'], $_POST['code'], $_POST['expires_at'])) {
-    $class_name = trim($_POST['class_name']);
-    $code = trim($_POST['code']);
-    $expires_at = trim($_POST['expires_at']);
+// Get all leave applications for this student - modified to match your schema
+$leave_query = "SELECT 
+    la.id, 
+    la.student_rollno, 
+    la.student_name, 
+    la.professor_name, 
+    la.explanation, 
+    la.document, 
+    la.status,
+    la.created_at
+FROM leave_applications la
+WHERE la.student_rollno = ? 
+ORDER BY la.created_at DESC";
 
-    // Validate inputs
-    if (empty($class_name) || empty($code) || empty($expires_at)) {
-        $error = "All fields are required!";
-    } else {
-        // Get class location
-        $class_stmt = $conn->prepare("SELECT latitude, longitude FROM classes WHERE class_name=?");
-        if (!$class_stmt) {
-            die("Error preparing class query: " . $conn->error);
-        }
-        $class_stmt->bind_param("s", $class_name);
-        $class_stmt->execute();
-        $class_result = $class_stmt->get_result();
-
-        if ($class_result->num_rows > 0) {
-            $class = $class_result->fetch_assoc();
-
-            // Insert new session
-            $insert_stmt = $conn->prepare("INSERT INTO class_sessions 
-                (class_name, code, faculty_name, latitude, longitude, status, expires_at, created_at) 
-                VALUES (?, ?, ?, ?, ?, 'active', ?, NOW())");
-            if (!$insert_stmt) {
-                die("Error preparing insert query: " . $conn->error);
-            }
-            $insert_stmt->bind_param(
-                "sssdds",
-                $class_name,
-                $code,
-                $faculty['name'],
-                $class['latitude'],
-                $class['longitude'],
-                $expires_at
-            );
-
-            if ($insert_stmt->execute()) {
-                $success = "Class session created successfully!";
-            } else {
-                $error = "Error creating session: " . $conn->error;
-            }
-        } else {
-            $error = "Invalid class selected!";
-        }
-    }
+$leave_stmt = $conn->prepare($leave_query);
+if (!$leave_stmt) {
+    die("Error preparing leave query: " . $conn->error);
 }
-
-// Get all classes for dropdown
-$classes = $conn->query("SELECT class_name FROM classes");
-if (!$classes) {
-    die("Error fetching classes: " . $conn->error);
-}
+$leave_stmt->bind_param("s", $rollno);
+$leave_stmt->execute();
+$leave_applications = $leave_stmt->get_result();
 
 // Filter handling
-$filter_class = isset($_GET['filter_class']) ? $conn->real_escape_string($_GET['filter_class']) : '';
 $filter_status = isset($_GET['filter_status']) ? $conn->real_escape_string($_GET['filter_status']) : '';
+$filter_professor = isset($_GET['filter_professor']) ? $conn->real_escape_string($_GET['filter_professor']) : '';
 
-// Build query with filters
-$query = "SELECT * FROM class_sessions WHERE faculty_name = ?";
-$params = [$faculty['name']];
-$types = "s";
-
-if (!empty($filter_class)) {
-    $query .= " AND class_name = ?";
-    $params[] = $filter_class;
-    $types .= "s";
+// Build filtered query if needed
+if (!empty($filter_status) || !empty($filter_professor)) {
+    $leave_query = "SELECT 
+        la.id, 
+        la.student_rollno, 
+        la.student_name, 
+        la.professor_name, 
+        la.explanation, 
+        la.document, 
+        la.status,
+        la.created_at
+    FROM leave_applications la
+    WHERE la.student_rollno = ?";
+    
+    if (!empty($filter_status)) {
+        $leave_query .= " AND la.status = ?";
+    }
+    
+    if (!empty($filter_professor)) {
+        $leave_query .= " AND la.professor_name = ?";
+    }
+    
+    $leave_query .= " ORDER BY la.created_at DESC";
+    
+    $leave_stmt = $conn->prepare($leave_query);
+    
+    // Bind parameters based on which filters are set
+    if (!empty($filter_status) && !empty($filter_professor)) {
+        $leave_stmt->bind_param("sss", $rollno, $filter_status, $filter_professor);
+    } elseif (!empty($filter_status)) {
+        $leave_stmt->bind_param("ss", $rollno, $filter_status);
+    } elseif (!empty($filter_professor)) {
+        $leave_stmt->bind_param("ss", $rollno, $filter_professor);
+    } else {
+        $leave_stmt->bind_param("s", $rollno);
+    }
+    
+    $leave_stmt->execute();
+    $leave_applications = $leave_stmt->get_result();
 }
 
-if (!empty($filter_status)) {
-    $query .= " AND status = ?";
-    $params[] = $filter_status;
-    $types .= "s";
-}
-
-$query .= " ORDER BY created_at DESC";
-
-// Execute filtered query
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Error preparing session query: " . $conn->error);
-}
-$stmt->bind_param($types, ...$params);
-$stmt->execute();
-$sessions = $stmt->get_result();
-if (!$sessions) {
-    die("Error executing session query: " . $conn->error);
-}
+// Get unique professors for filter dropdown
+$professors_query = $conn->query("SELECT DISTINCT professor_name FROM leave_applications WHERE student_rollno = '$rollno'");
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faculty Dashboard - Manage Sessions</title>
+    <title>Student Dashboard - Leave Applications</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -145,6 +115,7 @@ if (!$sessions) {
             --dark: #34495e;
             --success: #2ecc71;
             --danger: #e74c3c;
+            --warning: #f39c12;
         }
 
         * {
@@ -192,6 +163,7 @@ if (!$sessions) {
             height: 50px;
             border-radius: 50%;
             object-fit: cover;
+            
             margin-right: 15px;
             border: 2px solid var(--secondary);
         }
@@ -228,9 +200,7 @@ if (!$sessions) {
             margin-bottom: 30px;
         }
 
-        h1,
-        h2,
-        h3 {
+        h1, h2, h3 {
             color: var(--primary);
             margin-bottom: 20px;
         }
@@ -246,8 +216,7 @@ if (!$sessions) {
             color: var(--dark);
         }
 
-        select,
-        input {
+        select, input {
             width: 100%;
             padding: 10px 15px;
             border: 1px solid #ddd;
@@ -256,14 +225,12 @@ if (!$sessions) {
             transition: border 0.3s;
         }
 
-        select:focus,
-        input:focus {
+        select:focus, input:focus {
             outline: none;
             border-color: var(--secondary);
         }
 
-        button,
-        .btn {
+        button, .btn {
             background-color: var(--secondary);
             color: white;
             border: none;
@@ -274,8 +241,7 @@ if (!$sessions) {
             transition: background 0.3s;
         }
 
-        button:hover,
-        .btn:hover {
+        button:hover, .btn:hover {
             background-color: #2980b9;
         }
 
@@ -287,8 +253,7 @@ if (!$sessions) {
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
-        th,
-        td {
+        th, td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
@@ -303,12 +268,17 @@ if (!$sessions) {
             background-color: #f9f9f9;
         }
 
-        .status-active {
+        .status-pending {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .status-approved {
             color: var(--success);
             font-weight: 600;
         }
 
-        .status-inactive {
+        .status-rejected {
             color: var(--danger);
             font-weight: 600;
         }
@@ -328,6 +298,15 @@ if (!$sessions) {
             background-color: #f8d7da;
             color: #721c24;
         }
+
+        .document-link {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        .document-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -335,119 +314,100 @@ if (!$sessions) {
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>Faculty Dashboard</h2>
+                <h2>Student Dashboard</h2>
             </div>
             <div class="sidebar-profile">
-                <img src="<?php echo htmlspecialchars($faculty['profile_photo']); ?>" alt="Profile" class="profile-photo">
+                <img src="<?php echo htmlspecialchars($student['profile_photo']); ?>" alt="Profile" class="profile-photo">
                 <div>
-                    <p><?php echo htmlspecialchars($faculty['name']); ?></p>
-                    <small>Faculty</small>
+                    <p><?php echo htmlspecialchars($student['name']); ?></p>
+                    <small>Student</small>
                 </div>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="faculty_dashboard.php" class="active">Manage Sessions</a></li>
-                <li><a href="logout.php">Logout</a></li>
-            </ul>
+            <li><a href="student_dashboard.php">Home</a></li>
+            <li><a href="view_profile.php">View Profile</a></li>
+            <li><a href="mark_attendance.php">Mark Attendance</a></li>
+            <li><a href="view_attendance.php">View Attendance</a></li>
+            <li><a href="submit_leave.php">Submit Leave</a></li>
+            <!-- <li><a href="leaveStatus.php">Leave Status</a></li> -->
+            <li><a href="logout.php">Logout</a></li>
+        </ul>
         </div>
 
         <div class="main-content">
-            <h1>Manage Class Sessions</h1>
+            <h1>My Leave Applications</h1>
 
-            <!-- Alert Messages -->
-            <?php if (isset($error)) : ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php elseif (isset($success)) : ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-            <?php endif; ?>
-
-            <!-- Create Session Form -->
+            <!-- Filter Form -->
             <div class="card">
-                <h3>Create New Session</h3>
-                <form method="POST">
+                <h3>Filter Applications</h3>
+                <form method="GET">
                     <div class="form-group">
-                        <label for="class_name">Class Name</label>
-                        <select name="class_name" id="class_name" required>
-                            <option value="">Select a class</option>
-                            <?php while ($row = $classes->fetch_assoc()) : ?>
-                                <option value="<?php echo htmlspecialchars($row['class_name']); ?>"><?php echo htmlspecialchars($row['class_name']); ?></option>
-                            <?php endwhile; ?>
+                        <label for="filter_status">Status</label>
+                        <select name="filter_status" id="filter_status">
+                            <option value="">All Statuses</option>
+                            <option value="Pending" <?php echo ($filter_status == 'Pending') ? 'selected' : ''; ?>>Pending</option>
+                            <option value="Approved" <?php echo ($filter_status == 'Approved') ? 'selected' : ''; ?>>Approved</option>
+                            <option value="Rejected" <?php echo ($filter_status == 'Rejected') ? 'selected' : ''; ?>>Rejected</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="code">Session Code</label>
-                        <input type="text" name="code" id="code" maxlength="10" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="expires_at">Session Expiry</label>
-                        <input type="datetime-local" name="expires_at" id="expires_at" required>
-                    </div>
-                    <button type="submit">Create Session</button>
-                </form>
-            </div>
-
-            <!-- Filter Sessions -->
-            <div class="card">
-                <h3>Filter Sessions</h3>
-                <form method="GET">
-                    <div class="form-group">
-                        <label for="filter_class">Class Name</label>
-                        <select name="filter_class" id="filter_class">
-                            <option value="">All</option>
-                            <?php $classes->data_seek(0); ?>
-                            <?php while ($row = $classes->fetch_assoc()) : ?>
-                                <option value="<?php echo htmlspecialchars($row['class_name']); ?>" <?php echo ($filter_class == $row['class_name']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($row['class_name']); ?>
+                        <label for="filter_professor">Professor</label>
+                        <select name="filter_professor" id="filter_professor">
+                            <option value="">All Professors</option>
+                            <?php while ($professor = $professors_query->fetch_assoc()) : ?>
+                                <option value="<?php echo htmlspecialchars($professor['professor_name']); ?>" 
+                                    <?php echo ($filter_professor == $professor['professor_name']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($professor['professor_name']); ?>
                                 </option>
                             <?php endwhile; ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="filter_status">Status</label>
-                        <select name="filter_status" id="filter_status">
-                            <option value="">All</option>
-                            <option value="active" <?php echo ($filter_status == 'active') ? 'selected' : ''; ?>>Active</option>
-                            <option value="inactive" <?php echo ($filter_status == 'inactive') ? 'selected' : ''; ?>>Inactive</option>
-                        </select>
-                    </div>
                     <button type="submit">Apply Filters</button>
+                    <?php if (!empty($filter_status) || !empty($filter_professor)) : ?>
+                        <a href="student_dashboard.php" class="btn" style="margin-left: 10px; background-color: var(--danger);">Clear Filters</a>
+                    <?php endif; ?>
                 </form>
             </div>
 
-            <!-- Session Table -->
+            <!-- Leave Applications Table -->
             <div class="card">
-                <h3>Session List</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Class Name</th>
-                            <th>Code</th>
-                            <th>Status</th>
-                            <th>Expires At</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($row = $sessions->fetch_assoc()) : ?>
+                <h3>Application History</h3>
+                <?php if ($leave_applications->num_rows > 0) : ?>
+                    <table>
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($row['class_name']); ?></td>
-                                <td><?php echo htmlspecialchars($row['code']); ?></td>
-                                <td class="<?php echo ($row['status'] == 'active') ? 'status-active' : 'status-inactive'; ?>">
-                                    <?php echo htmlspecialchars(ucfirst($row['status'])); ?>
-                                </td>
-                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row['expires_at']))); ?></td>
-                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row['created_at']))); ?></td>
+                                <th>Professor</th>
+                                <th>Application Date</th>
+                                <th>Explanation</th>
+                                <th>Document</th>
+                                <th>Status</th>
                             </tr>
-                        <?php endwhile; ?>
-                        <?php if ($sessions->num_rows == 0) : ?>
-                            <tr>
-                                <td colspan="5">No sessions found.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php while ($application = $leave_applications->fetch_assoc()) : ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($application['professor_name']); ?></td>
+                                    <td><?php echo htmlspecialchars(date('M d, Y', strtotime($application['created_at']))); ?></td>
+                                    <td><?php echo htmlspecialchars($application['explanation']); ?></td>
+                                    <td>
+                                        <?php if (!empty($application['document'])) : ?>
+                                            <a href="<?php echo htmlspecialchars($application['document']); ?>" class="document-link" target="_blank">View Document</a>
+                                        <?php else : ?>
+                                            <em>No document</em>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="status-<?php echo strtolower($application['status']); ?>">
+                                        <?php echo htmlspecialchars($application['status']); ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                <?php else : ?>
+                    <p>No leave applications found.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </body>
-
 </html>

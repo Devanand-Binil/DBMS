@@ -29,6 +29,9 @@ if ($conn->connect_error) {
     die("System temporarily unavailable. Please try again later.");
 }
 
+// Fetch student details for sidebar
+$student = $conn->query("SELECT * FROM students WHERE rollno='$rollno'")->fetch_assoc();
+
 $message = "";
 
 // Process form submission
@@ -62,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $conn->begin_transaction();
             
             try {
-                // Get active class session (using your class_sessions table)
+                // Get active class session
                 $class_query = $conn->prepare("SELECT * FROM class_sessions WHERE code=? AND status='active'");
                 if (!$class_query) {
                     throw new Exception("Database error: " . $conn->error);
@@ -81,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $distance = haversine($lat, $long, $class_lat, $class_long);
 
                     if ($distance <= 25) {
-                        // Get class ID (from your classes table)
+                        // Get class ID
                         $class_id_query = $conn->prepare("SELECT id FROM classes WHERE class_name = ?");
                         $class_id_query->bind_param("s", $class['class_name']);
                         $class_id_query->execute();
@@ -90,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if ($class_id_data->num_rows > 0) {
                             $class_id = $class_id_data->fetch_assoc()['id'];
                             
-                            // Check for existing attendance record today (using your attendance table)
+                            // Check for existing attendance record today
                             $check_attendance = $conn->prepare("SELECT id FROM attendance WHERE rollno=? AND class_id=? AND date=CURDATE()");
                             $check_attendance->bind_param("si", $rollno, $class_id);
                             $check_attendance->execute();
@@ -98,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if ($check_attendance->get_result()->num_rows > 0) {
                                 $message = "Attendance already recorded today.";
                             } else {
-                                // Record new attendance (matches your attendance table structure)
+                                // Record new attendance
                                 $insert = $conn->prepare("INSERT INTO attendance (rollno, class_id, date, time, status) 
                                                         VALUES (?, ?, CURDATE(), CURTIME(), 'Present')");
                                 $insert->bind_param("si", $rollno, $class_id);
@@ -134,7 +137,7 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Haversine distance calculation (unchanged)
+// Haversine distance calculation
 function haversine($lat1, $lon1, $lat2, $lon2) {
     $earth_radius = 6371000; // meters
     $dLat = deg2rad($lat2 - $lat1);
@@ -154,121 +157,267 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mark Attendance</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
         .dashboard-container {
             display: flex;
             min-height: 100vh;
         }
+
         .sidebar {
             width: 250px;
-            background-color: #2c3e50;
+            background-color: var(--primary);
             color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100%;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-profile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
         }
+
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid var(--secondary);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 3px solid var(--secondary);
+        }
+
         .main-content {
-            flex: 1;
+            margin-left: 250px;
             padding: 30px;
-            background-color: white;
+            width: calc(100% - 250px);
         }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+            max-width: 800px;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .location-info {
+            background-color: var(--light);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            margin: 20px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
         .alert {
             padding: 15px;
+            border-radius: 5px;
             margin-bottom: 20px;
-            border-radius: 4px;
         }
+
         .alert-success {
             background-color: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
+
         .alert-error {
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        .location-info {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+
+        #location-status {
+            font-weight: bold;
+            margin-bottom: 10px;
         }
-        form {
-            max-width: 500px;
-        }
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button.secondary {
-            background-color: #6c757d;
-        }
-        #map {
-            height: 300px;
-            width: 100%;
-            margin-top: 20px;
-            border-radius: 4px;
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
 <div class="dashboard-container">
+    <!-- Sidebar -->
     <div class="sidebar">
-        <h3>Student Dashboard</h3>
-        <img src="uploads/default.png" style="width:80px;height:80px;border-radius:50%;margin-bottom:15px;">
-        <p>Roll No: <?= htmlspecialchars($rollno) ?></p>
-        <a href="student_dashboard.php">Home</a>
-        <a href="view_profile.php">View Profile</a>
-        <a href="mark_attendance.php" style="background:rgba(255,255,255,0.4);">Mark Attendance</a>
-        <a href="view_attendance.php">View Attendance</a>
-        <a href="submit_leave.php">Submit Leave</a>
-        <a href="logout.php">Logout</a>
+        <div class="sidebar-profile">
+            <img src="<?= htmlspecialchars($student['profile_photo'] ?? 'uploads/default.png') ?>" 
+                 class="profile-photo" 
+                 alt="Profile Photo"
+                 onerror="this.src='uploads/default.png'">
+            <h3><?= htmlspecialchars($student['name'] ?? '') ?></h3>
+            <p>Roll No: <?= htmlspecialchars($rollno) ?></p>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="student_dashboard.php">Home</a></li>
+            <li><a href="view_profile.php">View Profile</a></li>
+            <!-- <li><a href="mark_attendance.php" class="active">Mark Attendance</a></li> -->
+            <li><a href="view_attendance.php">View Attendance</a></li>
+            <li><a href="submit_leave.php">Submit Leave</a></li>
+            <li><a href="leaveStatus.php">Leave Status</a></li>
+            <li><a href="logout.php">Logout</a></li>
+        </ul>
     </div>
 
+    <!-- Main Content -->
     <div class="main-content">
-        <h2>Mark Attendance</h2>
+        <div class="card">
+            <h2>Mark Attendance</h2>
 
-        <?php if ($message): ?>
-            <div class="alert <?= strpos($message, 'successfully') !== false ? 'alert-success' : 'alert-error' ?>">
-                <?= htmlspecialchars($message) ?>
+            <?php if ($message): ?>
+                <div class="alert <?= strpos($message, 'successfully') !== false ? 'alert-success' : 'alert-error' ?>">
+                    <?= htmlspecialchars($message) ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="location-info">
+                <p id="location-status">Detecting your location...</p>
+                <p>Latitude: <span id="lat-display">-</span></p>
+                <p>Longitude: <span id="long-display">-</span></p>
+                <p>Accuracy: <span id="accuracy-display">-</span> meters</p>
+                <p id="location-method">Using: -</p>
             </div>
-        <?php endif; ?>
 
-        <div class="location-info">
-            <p id="location-status">Detecting your location...</p>
-            <p>Latitude: <span id="lat-display">-</span></p>
-            <p>Longitude: <span id="long-display">-</span></p>
-            <p>Accuracy: <span id="accuracy-display">-</span> meters</p>
-            <p id="location-method">Using: -</p>
+            <div id="map"></div>
+
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                
+                <div class="form-group">
+                    <label for="class_code">Class Code</label>
+                    <input type="text" id="class_code" name="class_code" required 
+                           pattern="[A-Za-z0-9]{6,12}" title="6-12 alphanumeric characters">
+                </div>
+
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+                <input type="hidden" id="accuracy" name="accuracy">
+
+                <button type="button" id="refresh-location" class="secondary">Refresh Location</button>
+                <button type="submit">Mark Attendance</button>
+            </form>
         </div>
-
-        <div id="map"></div>
-
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-            
-            <label for="class_code">Class Code</label>
-            <input type="text" id="class_code" name="class_code" required pattern="[A-Za-z0-9]{6,12}" title="6-12 alphanumeric characters">
-
-            <input type="hidden" id="latitude" name="latitude">
-            <input type="hidden" id="longitude" name="longitude">
-            <input type="hidden" id="accuracy" name="accuracy">
-
-            <button type="button" id="refresh-location" class="secondary">Refresh Location</button>
-            <button type="submit">Mark Attendance</button>
-        </form>
     </div>
 </div>
 
@@ -420,18 +569,6 @@ document.addEventListener('DOMContentLoaded', function() {
         getLocation();
     });
 });
-
-// Optional: Load Google Maps if available
-// function loadGoogleMaps() {
-//     const script = document.createElement('script');
-//     script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap`;
-//     script.async = true;
-//     script.defer = true;
-//     document.head.appendChild(script);
-// }
-
-// Uncomment to enable maps
-// loadGoogleMaps();
 </script>
 </body>
 </html>
