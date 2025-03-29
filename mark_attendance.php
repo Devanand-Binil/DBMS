@@ -238,8 +238,10 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
 
         .main-content {
             margin-left: 250px;
-            padding: 30px;
+            padding: 2rem;
             width: calc(100% - 250px);
+            min-height: 100vh;
+            background-color: #f8f9fa;
         }
 
         .card {
@@ -352,8 +354,13 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
             .main-content {
                 margin-left: 0;
                 width: 100%;
-                padding: 20px;
+                padding: 1.5rem;
             }
+        }
+        .card {
+            width: 100%;
+            max-width: none; /* Removes the 800px restriction */
+            /* ... keep other existing card styles ... */
         }
     </style>
 </head>

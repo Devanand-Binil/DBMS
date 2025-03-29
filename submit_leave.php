@@ -147,17 +147,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .main-content {
             margin-left: 250px;
-            padding: 30px;
+            padding: 2rem;
             width: calc(100% - 250px);
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
         }
 
         .card {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            padding: 25px;
-            margin-bottom: 30px;
-            max-width: 800px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 1000px; /* Increased from 800px */
+            margin: 0 auto; /* Center the card */
         }
 
         h1, h2, h3 {
@@ -236,8 +241,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .main-content {
                 margin-left: 0;
                 width: 100%;
-                padding: 20px;
+                padding: 1.5rem;
             }
+        }
+        .card {
+            width: 100%;
+            max-width: none; /* Removes the 800px restriction */
+            /* ... keep other existing card styles ... */
         }
     </style>
 </head>

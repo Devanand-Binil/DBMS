@@ -76,22 +76,26 @@ $classes = $conn->query("SELECT * FROM classes");
         .sidebar {
             width: 250px;
             height: 100vh;
-            background: #333;
-            color: white;
-            padding: 20px;
+            background: #2c3e50;
+            color: #fff;
+            padding: 1.5rem;
             position: fixed;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
 
         .sidebar a {
             display: block;
-            color: white;
-            padding: 10px;
+            color: #ecf0f1;
+            padding: 0.75rem;
             text-decoration: none;
-            margin-bottom: 5px;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
         .sidebar a:hover {
-            background: #555;
+            background: #34495e;
+            transform: translateX(5px);
         }
 
         .main-content {
@@ -131,6 +135,74 @@ $classes = $conn->query("SELECT * FROM classes");
             padding: 5px 10px;
             border: none;
             cursor: pointer;
+        }
+        /* Replace your existing table styles with this */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        table th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        /* Button styles for table actions */
+        table button, table .delete-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        table button {
+            background: #3498db;
+            color: white;
+            margin-right: 5px;
+        }
+
+        table button:hover {
+            background: #2980b9;
+        }
+
+        table .delete-btn {
+            background: #e74c3c;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        table .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        /* Responsive table for smaller screens */
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
