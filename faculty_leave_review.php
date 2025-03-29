@@ -244,6 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <ul class="sidebar-menu">
                 <li><a href="faculty_dashboard.php">Dashboard</a></li>
+                <li><a href="faculty_viewprofile.php">View profile</a></li>
                 <li><a href="faculty_manage_sessions.php">Manage Sessions</a></li>
                 <li><a href="faculty_leave_review.php" class="active">Review Leave Applications</a></li>
                 <li><a href="faculty_view_attendance.php">View Attendance</a></li>

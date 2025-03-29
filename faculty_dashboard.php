@@ -195,6 +195,7 @@ if ($facultyResult->num_rows > 0) {
             <p>Faculty ID: <?= htmlspecialchars($rollno) ?></p>
         </div>
         <ul class="sidebar-menu">
+            <li><a href="faculty_viewprofile.php">View profile</a></li>
             <li><a href="faculty_dashboard.php" class="active">Dashboard</a></li>
             <li><a href="faculty_manage_sessions.php">Manage Sessions</a></li>
             <li><a href="faculty_leave_review.php">Review Leave Applications</a></li>
