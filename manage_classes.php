@@ -25,7 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_class'])) {
     $latitude = $_POST['latitude'];
     $longitude = $_POST['longitude'];
 
+    // Update classes table
     $conn->query("UPDATE classes SET class_name='$class_name', latitude='$latitude', longitude='$longitude' WHERE id=$id");
+    
+    // Also update any active class sessions with the same class name
+    $conn->query("UPDATE class_sessions SET latitude='$latitude', longitude='$longitude' WHERE class_name='$class_name'");
+    
     header("Location: manage_classes.php");
     exit;
 }

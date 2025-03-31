@@ -29,10 +29,58 @@ if ($conn->connect_error) {
     die("System temporarily unavailable. Please try again later.");
 }
 
+// Function to get the user's IP address
+function getUserIP() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    } else {
+        return $_SERVER['REMOTE_ADDR'];
+    }
+}
+
+// Get the user's IP address
+$userIP = getUserIP();
+
+// Update the student's IP address in the database
+$updateIPQuery = $conn->prepare("UPDATE students SET ip_address = ? WHERE rollno = ?");
+if ($updateIPQuery) {
+    $updateIPQuery->bind_param("ss", $userIP, $rollno);
+    $updateIPQuery->execute();
+    $updateIPQuery->close();
+} else {
+    error_log("Failed to prepare IP update query: " . $conn->error);
+}
+
 // Fetch student details for sidebar
 $student = $conn->query("SELECT * FROM students WHERE rollno='$rollno'")->fetch_assoc();
 
 $message = "";
+
+// Check if the IP address has already been used to mark attendance today
+$check_ip_query = $conn->prepare("
+    SELECT a.rollno, s.name AS student_name, c.class_name 
+    FROM attendance a
+    JOIN students s ON a.rollno = s.rollno
+    JOIN classes c ON a.class_id = c.id
+    WHERE a.ip_address = ? AND a.date = CURDATE()
+");
+if ($check_ip_query) {
+    $check_ip_query->bind_param("s", $userIP);
+    $check_ip_query->execute();
+    $ip_result = $check_ip_query->get_result();
+
+    if ($ip_result->num_rows > 0) {
+        $attendance_info = $ip_result->fetch_assoc();
+        $message = "⚠️ Attendance has already been marked from this device for student " .
+                   htmlspecialchars($attendance_info['student_name']) .
+                   " in class " . htmlspecialchars($attendance_info['class_name']) . " today.";
+    }
+    $check_ip_query->close();
+} else {
+    error_log("Failed to prepare IP check query: " . $conn->error);
+}
 
 // Process form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -102,9 +150,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $message = "Attendance already recorded today.";
                             } else {
                                 // Record new attendance
-                                $insert = $conn->prepare("INSERT INTO attendance (rollno, class_id, date, time, status) 
-                                                        VALUES (?, ?, CURDATE(), CURTIME(), 'Present')");
-                                $insert->bind_param("si", $rollno, $class_id);
+                                $insert = $conn->prepare("INSERT INTO attendance (rollno, class_id, date, time, status, ip_address) 
+                                                        VALUES (?, ?, CURDATE(), CURTIME(), 'Present', ?)");
+                                $insert->bind_param("sis", $rollno, $class_id, $userIP);
                                 
                                 if ($insert->execute()) {
                                     $conn->commit();
