@@ -454,7 +454,7 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
                 <p id="location-method">Using: -</p>
             </div>
 
-            <div id="map"></div>
+        
 
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">

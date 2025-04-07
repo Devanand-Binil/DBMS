@@ -42,7 +42,7 @@ $leave_query = "SELECT
     la.created_at
 FROM leave_applications la
 WHERE la.student_rollno = ? 
-ORDER BY la.created_at DESC";
+ORDER BY la.id DESC";
 
 $leave_stmt = $conn->prepare($leave_query);
 if (!$leave_stmt) {
@@ -387,7 +387,7 @@ $professors_query = $conn->query("SELECT DISTINCT professor_name FROM leave_appl
                             <?php while ($application = $leave_applications->fetch_assoc()) : ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($application['professor_name']); ?></td>
-                                    <td><?php echo htmlspecialchars(date('M d, Y', strtotime($application['created_at']))); ?></td>
+                                    <td><?php echo htmlspecialchars($application['created_at']); ?></td>
                                     <td><?php echo htmlspecialchars($application['explanation']); ?></td>
                                     <td>
                                         <?php if (!empty($application['document'])) : ?>
